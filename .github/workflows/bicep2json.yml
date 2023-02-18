@@ -1,10 +1,10 @@
 name: Convert ARM template from Bicep to JSON
 on:
-  # push:
-  #   branches:
-  #     - main  # Set a branch name to trigger deployment
-  #   paths:
-  #     - '**.bicep'
+  push:
+    branches:
+      - main  # Set a branch name to trigger deployment
+    paths:
+      - '**.bicep'
   workflow_dispatch:
 
 env:

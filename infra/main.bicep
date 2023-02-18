@@ -1,22 +1,3 @@
-@description('Networking type for Container App Environment')
-@allowed([
-  'public'
-  'vnetWithELB'
-  'vnetWithILB'
-])
-param envNetworking string = 'public'
-
-@description('Subnet ID for Container App Environment')
-param containerEnvSubnetId string = ''
-
-@description('Storage Account Name')
-param storageName string = 'st${uniqueString(resourceGroup().id)}'
-@description('Log Analytics Name')
-param logAnalyticsName string = 'log-func-${uniqueString(resourceGroup().id)}'
-@description('Application Insights Name')
-param appInsightsName string = 'ai-func-${uniqueString(resourceGroup().id)}'
-@description('Container App Environment Name')
-param containerAppEnvName string = 'cae-func-${uniqueString(resourceGroup().id)}'
 @description('Container App Name')
 param containerAppName string = 'ca-func-${uniqueString(resourceGroup().id)}'
 @description('Language of Function Worker')
@@ -27,7 +8,27 @@ param containerAppName string = 'ca-func-${uniqueString(resourceGroup().id)}'
   'java'
   'python'
 ])
-param runtime string = 'node'
+param functionRuntime string = 'node'
+
+@description('Container App Environment Name')
+param containerAppEnvName string = 'cae-func-${uniqueString(resourceGroup().id)}'
+@description('Networking type for Container App Environment')
+@allowed([
+  'Public'
+  'In VNet with ELB'
+  'In VNet with ILB'
+])
+param containerAppEnvNetworkType string = 'Public'
+
+@description('Subnet ID for Container App Environment')
+param containerEnvSubnetId string = ''
+
+@description('Storage Account Name')
+param storageName string = 'st${uniqueString(resourceGroup().id)}'
+@description('Log Analytics Name')
+param logAnalyticsName string = 'log-func-${uniqueString(resourceGroup().id)}'
+@description('Application Insights Name')
+param appInsightsName string = 'ai-func-${uniqueString(resourceGroup().id)}'
 param location string = resourceGroup().location
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
@@ -70,9 +71,9 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2022-10-01' = {
   location: location
   name: containerAppEnvName
   properties: {
-    vnetConfiguration: envNetworking == 'public' ? null : {
+    vnetConfiguration: containerAppEnvNetworkType == 'Public' ? null : {
       infrastructureSubnetId: containerEnvSubnetId
-      internal: envNetworking == 'vnetWithILB'
+      internal: containerAppEnvNetworkType == 'In VNet with ILB'
     }
     appLogsConfiguration: {
       destination: 'log-analytics'
@@ -119,7 +120,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       containers: [
         {
           name: 'functions-container'
-          image: 'mcr.microsoft.com/azure-functions/${runtime}:4'
+          image: 'mcr.microsoft.com/azure-functions/${functionRuntime}:4'
           volumeMounts: [
             {
               mountPath: '/home/site/wwwroot'

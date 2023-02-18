@@ -1,0 +1,31 @@
+name: Convert ARM template from Bicep to JSON
+on:
+  # push:
+  #   branches:
+  #     - main  # Set a branch name to trigger deployment
+  #   paths:
+  #     - '**.bicep'
+  workflow_dispatch:
+
+env:
+  out_dir: public
+  main_bicep_file: bicep/main.bicep
+  publish_branch: json_template
+
+jobs:
+  deploy:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build bicep
+        run: |
+          mkdir ./${{ env.out_dir }}
+          az bicep build --file ${{ env.main_bicep_file }} --outdir ${{ env.out_dir }}
+      - name: Publish to other branch
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          personal_token: ${{ secrets.PERSONAL_TOKEN }}
+          publish_dir: ./${{ env.out_dir }}
+          publish_branch: ${{ env.publish_branch }}

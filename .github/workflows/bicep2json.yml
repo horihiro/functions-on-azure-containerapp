@@ -9,7 +9,7 @@ on:
 
 env:
   out_dir: public
-  main_bicep_file: bicep/main.bicep
+  main_bicep_file: infra/main.bicep
   publish_branch: json_template
 
 jobs:

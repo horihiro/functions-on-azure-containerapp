@@ -5,17 +5,45 @@
     "_generator": {
       "name": "bicep",
       "version": "0.14.46.61228",
-      "templateHash": "4862149452615582357"
+      "templateHash": "13426264181646066049"
     }
   },
   "parameters": {
-    "envNetworking": {
+    "containerAppName": {
       "type": "string",
-      "defaultValue": "public",
+      "defaultValue": "[format('ca-func-{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Container App Name"
+      }
+    },
+    "functionRuntime": {
+      "type": "string",
+      "defaultValue": "node",
       "allowedValues": [
-        "public",
-        "vnetWithELB",
-        "vnetWithILB"
+        "dotnet",
+        "dotnet-isolated",
+        "node",
+        "java",
+        "python"
+      ],
+      "metadata": {
+        "description": "Language of Function Worker"
+      }
+    },
+    "containerAppEnvName": {
+      "type": "string",
+      "defaultValue": "[format('cae-func-{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Container App Environment Name"
+      }
+    },
+    "containerAppEnvNetworkType": {
+      "type": "string",
+      "defaultValue": "Public",
+      "allowedValues": [
+        "Public",
+        "In VNet with ELB",
+        "In VNet with ILB"
       ],
       "metadata": {
         "description": "Networking type for Container App Environment"
@@ -47,34 +75,6 @@
       "defaultValue": "[format('ai-func-{0}', uniqueString(resourceGroup().id))]",
       "metadata": {
         "description": "Application Insights Name"
-      }
-    },
-    "containerAppEnvName": {
-      "type": "string",
-      "defaultValue": "[format('cae-func-{0}', uniqueString(resourceGroup().id))]",
-      "metadata": {
-        "description": "Container App Environment Name"
-      }
-    },
-    "containerAppName": {
-      "type": "string",
-      "defaultValue": "[format('ca-func-{0}', uniqueString(resourceGroup().id))]",
-      "metadata": {
-        "description": "Container App Name"
-      }
-    },
-    "runtime": {
-      "type": "string",
-      "defaultValue": "node",
-      "allowedValues": [
-        "dotnet",
-        "dotnet-isolated",
-        "node",
-        "java",
-        "python"
-      ],
-      "metadata": {
-        "description": "Language of Function Worker"
       }
     },
     "location": {
@@ -136,7 +136,7 @@
       "name": "[parameters('containerAppEnvName')]",
       "location": "[parameters('location')]",
       "properties": {
-        "vnetConfiguration": "[if(equals(parameters('envNetworking'), 'public'), null(), createObject('infrastructureSubnetId', parameters('containerEnvSubnetId'), 'internal', equals(parameters('envNetworking'), 'vnetWithILB')))]",
+        "vnetConfiguration": "[if(equals(parameters('containerAppEnvNetworkType'), 'Public'), null(), createObject('infrastructureSubnetId', parameters('containerEnvSubnetId'), 'internal', equals(parameters('containerAppEnvNetworkType'), 'In VNet with ILB')))]",
         "appLogsConfiguration": {
           "destination": "log-analytics",
           "logAnalyticsConfiguration": {
@@ -191,7 +191,7 @@
           "containers": [
             {
               "name": "functions-container",
-              "image": "[format('mcr.microsoft.com/azure-functions/{0}:4', parameters('runtime'))]",
+              "image": "[format('mcr.microsoft.com/azure-functions/{0}:4', parameters('functionRuntime'))]",
               "volumeMounts": [
                 {
                   "mountPath": "/home/site/wwwroot",

@@ -46,7 +46,7 @@ resource fileShareService 'Microsoft.Storage/storageAccounts/fileServices@2022-0
 }
 resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-09-01' = {
   parent: fileShareService
-  name: 'home-site-wwwroot'
+  name: 'file-share-${containerAppName}'
   properties: {
 
   }
@@ -90,7 +90,7 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2022-10-01' = {
 
 resource containerAppEnvVolume 'Microsoft.App/managedEnvironments/storages@2022-10-01' = {
   parent: containerAppEnv
-  name: '${containerAppEnv.name}-storage'
+  name: '${containerAppName}-storage'
   properties: {
     azureFile: {
       accessMode: 'ReadWrite'

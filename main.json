@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.14.46.61228",
-      "templateHash": "13426264181646066049"
+      "templateHash": "6553905649691996217"
     }
   },
   "parameters": {
@@ -104,7 +104,7 @@
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}/{2}', parameters('storageName'), 'default', 'home-site-wwwroot')]",
+      "name": "[format('{0}/{1}/{2}', parameters('storageName'), 'default', format('file-share-{0}', parameters('containerAppName')))]",
       "properties": {},
       "dependsOn": [
         "[resourceId('Microsoft.Storage/storageAccounts/fileServices', parameters('storageName'), 'default')]"
@@ -155,18 +155,18 @@
     {
       "type": "Microsoft.App/managedEnvironments/storages",
       "apiVersion": "2022-10-01",
-      "name": "[format('{0}/{1}', parameters('containerAppEnvName'), format('{0}-storage', parameters('containerAppEnvName')))]",
+      "name": "[format('{0}/{1}', parameters('containerAppEnvName'), format('{0}-storage', parameters('containerAppName')))]",
       "properties": {
         "azureFile": {
           "accessMode": "ReadWrite",
           "accountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2022-09-01').keys[0].value]",
           "accountName": "[parameters('storageName')]",
-          "shareName": "home-site-wwwroot"
+          "shareName": "[format('file-share-{0}', parameters('containerAppName'))]"
         }
       },
       "dependsOn": [
         "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', parameters('storageName'), 'default', 'home-site-wwwroot')]",
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', parameters('storageName'), 'default', format('file-share-{0}', parameters('containerAppName')))]",
         "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
       ]
     },
@@ -217,7 +217,7 @@
           "volumes": [
             {
               "name": "azure-files-volume",
-              "storageName": "[format('{0}-storage', parameters('containerAppEnvName'))]",
+              "storageName": "[format('{0}-storage', parameters('containerAppName'))]",
               "storageType": "AzureFile"
             }
           ]
@@ -226,7 +226,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvName'))]",
-        "[resourceId('Microsoft.App/managedEnvironments/storages', parameters('containerAppEnvName'), format('{0}-storage', parameters('containerAppEnvName')))]",
+        "[resourceId('Microsoft.App/managedEnvironments/storages', parameters('containerAppEnvName'), format('{0}-storage', parameters('containerAppName')))]",
         "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
       ]
     }

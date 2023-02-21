@@ -4,12 +4,12 @@
 ## Deployed resources
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fhorihiro%2Ffunctions-on-azure-containerapp%2Fjson_template%2Fmain.json)
 
-The above deployment button generates the following resources
+The above deployment button deploys the following resources
 
   - Storage Account:  
     File storage to store function code and be mounted as `/home/site/wwwroot` of containers
   - Container App:  
-    Container host for Azure Functions image `mcr.microsoft.com/azure-functions/${WORKER_RUNTIME_LANGUAGE}`
+    Container host for Azure Functions runtime `mcr.microsoft.com/azure-functions/${WORKER_RUNTIME_LANGUAGE}`
   - Container App Environment:  
     Managed environment for the Container App and it can be deployed in VNET also.
   - Application Insights:  

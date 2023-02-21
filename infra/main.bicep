@@ -38,17 +38,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   sku: {
     name: 'Standard_LRS'
   }
-}
-
-resource fileShareService 'Microsoft.Storage/storageAccounts/fileServices@2022-09-01' = {
-  parent: storageAccount
-  name: 'default'
-}
-resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-09-01' = {
-  parent: fileShareService
-  name: 'file-share-${containerAppName}'
-  properties: {
-
+  resource fileShareService 'fileServices@2022-09-01' = {
+    name: 'default'
+    resource fileShare 'shares@2022-09-01' = {
+      name: 'file-share-${containerAppName}'
+    }
   }
 }
 
@@ -96,7 +90,7 @@ resource containerAppEnvVolume 'Microsoft.App/managedEnvironments/storages@2022-
       accessMode: 'ReadWrite'
       accountKey: storageAccount.listKeys().keys[0].value
       accountName: storageAccount.name
-      shareName: fileShare.name
+      shareName: storageAccount::fileShareService::fileShare.name
     }
   }
 }

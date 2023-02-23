@@ -1,5 +1,3 @@
-@description('Container App Name')
-param containerAppName string = 'ca-func-${uniqueString(resourceGroup().id)}'
 @description('Language of Function Worker')
 @allowed([
   'dotnet'
@@ -10,30 +8,44 @@ param containerAppName string = 'ca-func-${uniqueString(resourceGroup().id)}'
 ])
 param functionRuntime string = 'node'
 
+@description('Version of Function Host')
+@allowed([
+  '4'
+  '3'
+])
+param functionHostVersion string = '4'
+
+@description('Container App Name')
+param containerAppName string = 'ca-func-${uniqueString(resourceGroup().id)}'
+
 @description('Container App Environment Name')
-param containerAppEnvName string = 'cae-func-${uniqueString(resourceGroup().id)}'
+param containerAppsEnvironmentName string = 'cae-func-${uniqueString(resourceGroup().id)}'
+
 @description('Networking type for Container App Environment')
 @allowed([
   'Public'
   'In VNet with ELB'
   'In VNet with ILB'
 ])
-param containerAppEnvNetworkType string = 'Public'
+param containerAppsEnvironmentNetworkType string = 'Public'
 
-@description('Subnet ID for Container App Environment')
-param containerEnvSubnetId string = ''
+@description('Existing subnet ID for Container App Environment')
+param existingSubnetIdForContainerAppsEnvironment string = ''
 
 @description('Storage Account Name')
-param storageName string = 'st${uniqueString(resourceGroup().id)}'
+param storageAccountName string = 'st${uniqueString(resourceGroup().id)}'
+
 @description('Log Analytics Name')
 param logAnalyticsName string = 'log-func-${uniqueString(resourceGroup().id)}'
+
 @description('Application Insights Name')
-param appInsightsName string = 'ai-func-${uniqueString(resourceGroup().id)}'
+param applicationInsightsName string = 'ai-func-${uniqueString(resourceGroup().id)}'
+
 param location string = resourceGroup().location
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   location: location
-  name: storageName
+  name: storageAccountName
   kind: 'StorageV2'
   sku: {
     name: 'Standard_LRS'
@@ -53,7 +65,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   location: location
-  name: appInsightsName
+  name: applicationInsightsName
   kind: ''
   properties: {
     Application_Type: 'web'
@@ -63,11 +75,11 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 
 resource containerAppEnv 'Microsoft.App/managedEnvironments@2022-10-01' = {
   location: location
-  name: containerAppEnvName
+  name: containerAppsEnvironmentName
   properties: {
-    vnetConfiguration: containerAppEnvNetworkType == 'Public' ? null : {
-      infrastructureSubnetId: containerEnvSubnetId
-      internal: containerAppEnvNetworkType == 'In VNet with ILB'
+    vnetConfiguration: containerAppsEnvironmentNetworkType == 'Public' ? null : {
+      infrastructureSubnetId: existingSubnetIdForContainerAppsEnvironment
+      internal: containerAppsEnvironmentNetworkType == 'In VNet with ILB'
     }
     appLogsConfiguration: {
       destination: 'log-analytics'
@@ -80,17 +92,15 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2022-10-01' = {
   sku: {
     name: 'Consumption'
   }
-}
-
-resource containerAppEnvVolume 'Microsoft.App/managedEnvironments/storages@2022-10-01' = {
-  parent: containerAppEnv
-  name: '${containerAppName}-storage'
-  properties: {
-    azureFile: {
-      accessMode: 'ReadWrite'
-      accountKey: storageAccount.listKeys().keys[0].value
-      accountName: storageAccount.name
-      shareName: storageAccount::fileShareService::fileShare.name
+  resource containerAppEnvVolume 'storages@2022-10-01' = {
+    name: '${containerAppName}-storage'
+    properties: {
+      azureFile: {
+        accessMode: 'ReadWrite'
+        accountKey: storageAccount.listKeys().keys[0].value
+        accountName: storageAccount.name
+        shareName: storageAccount::fileShareService::fileShare.name
+      }
     }
   }
 }
@@ -114,7 +124,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       containers: [
         {
           name: 'functions-container'
-          image: 'mcr.microsoft.com/azure-functions/${functionRuntime}:4'
+          image: 'mcr.microsoft.com/azure-functions/${functionRuntime}:${functionHostVersion}'
           volumeMounts: [
             {
               mountPath: '/home/site/wwwroot'
@@ -140,7 +150,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       volumes: [
         {
           name: 'azure-files-volume'
-          storageName: containerAppEnvVolume.name
+          storageName: containerAppEnv::containerAppEnvVolume.name
           storageType: 'AzureFile'
         }
       ]

@@ -5,17 +5,10 @@
     "_generator": {
       "name": "bicep",
       "version": "0.14.46.61228",
-      "templateHash": "2801859863698643945"
+      "templateHash": "11873083376386381503"
     }
   },
   "parameters": {
-    "containerAppName": {
-      "type": "string",
-      "defaultValue": "[format('ca-func-{0}', uniqueString(resourceGroup().id))]",
-      "metadata": {
-        "description": "Container App Name"
-      }
-    },
     "functionRuntime": {
       "type": "string",
       "defaultValue": "node",
@@ -30,14 +23,32 @@
         "description": "Language of Function Worker"
       }
     },
-    "containerAppEnvName": {
+    "functionHostVersion": {
+      "type": "string",
+      "defaultValue": "4",
+      "allowedValues": [
+        "4",
+        "3"
+      ],
+      "metadata": {
+        "description": "Version of Function Host"
+      }
+    },
+    "containerAppName": {
+      "type": "string",
+      "defaultValue": "[format('ca-func-{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Container App Name"
+      }
+    },
+    "containerAppsEnvironmentName": {
       "type": "string",
       "defaultValue": "[format('cae-func-{0}', uniqueString(resourceGroup().id))]",
       "metadata": {
         "description": "Container App Environment Name"
       }
     },
-    "containerAppEnvNetworkType": {
+    "containerAppsEnvironmentNetworkType": {
       "type": "string",
       "defaultValue": "Public",
       "allowedValues": [
@@ -49,14 +60,14 @@
         "description": "Networking type for Container App Environment"
       }
     },
-    "containerEnvSubnetId": {
+    "existingSubnetIdForContainerAppsEnvironment": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
-        "description": "Subnet ID for Container App Environment"
+        "description": "Existing subnet ID for Container App Environment"
       }
     },
-    "storageName": {
+    "storageAccountName": {
       "type": "string",
       "defaultValue": "[format('st{0}', uniqueString(resourceGroup().id))]",
       "metadata": {
@@ -70,7 +81,7 @@
         "description": "Log Analytics Name"
       }
     },
-    "appInsightsName": {
+    "applicationInsightsName": {
       "type": "string",
       "defaultValue": "[format('ai-func-{0}', uniqueString(resourceGroup().id))]",
       "metadata": {
@@ -86,23 +97,41 @@
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}/{2}', parameters('storageName'), 'default', format('file-share-{0}', parameters('containerAppName')))]",
+      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', format('file-share-{0}', parameters('containerAppName')))]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', parameters('storageName'), 'default')]"
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', parameters('storageAccountName'), 'default')]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices",
       "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}', parameters('storageName'), 'default')]",
+      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments/storages",
+      "apiVersion": "2022-10-01",
+      "name": "[format('{0}/{1}', parameters('containerAppsEnvironmentName'), format('{0}-storage', parameters('containerAppName')))]",
+      "properties": {
+        "azureFile": {
+          "accessMode": "ReadWrite",
+          "accountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value]",
+          "accountName": "[parameters('storageAccountName')]",
+          "shareName": "[format('file-share-{0}', parameters('containerAppName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', parameters('storageAccountName'), 'default', format('file-share-{0}', parameters('containerAppName')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
       ]
     },
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2022-09-01",
-      "name": "[parameters('storageName')]",
+      "name": "[parameters('storageAccountName')]",
       "location": "[parameters('location')]",
       "kind": "StorageV2",
       "sku": {
@@ -118,7 +147,7 @@
     {
       "type": "Microsoft.Insights/components",
       "apiVersion": "2020-02-02",
-      "name": "[parameters('appInsightsName')]",
+      "name": "[parameters('applicationInsightsName')]",
       "location": "[parameters('location')]",
       "kind": "",
       "properties": {
@@ -132,10 +161,10 @@
     {
       "type": "Microsoft.App/managedEnvironments",
       "apiVersion": "2022-10-01",
-      "name": "[parameters('containerAppEnvName')]",
+      "name": "[parameters('containerAppsEnvironmentName')]",
       "location": "[parameters('location')]",
       "properties": {
-        "vnetConfiguration": "[if(equals(parameters('containerAppEnvNetworkType'), 'Public'), null(), createObject('infrastructureSubnetId', parameters('containerEnvSubnetId'), 'internal', equals(parameters('containerAppEnvNetworkType'), 'In VNet with ILB')))]",
+        "vnetConfiguration": "[if(equals(parameters('containerAppsEnvironmentNetworkType'), 'Public'), null(), createObject('infrastructureSubnetId', parameters('existingSubnetIdForContainerAppsEnvironment'), 'internal', equals(parameters('containerAppsEnvironmentNetworkType'), 'In VNet with ILB')))]",
         "appLogsConfiguration": {
           "destination": "log-analytics",
           "logAnalyticsConfiguration": {
@@ -152,30 +181,12 @@
       ]
     },
     {
-      "type": "Microsoft.App/managedEnvironments/storages",
-      "apiVersion": "2022-10-01",
-      "name": "[format('{0}/{1}', parameters('containerAppEnvName'), format('{0}-storage', parameters('containerAppName')))]",
-      "properties": {
-        "azureFile": {
-          "accessMode": "ReadWrite",
-          "accountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2022-09-01').keys[0].value]",
-          "accountName": "[parameters('storageName')]",
-          "shareName": "[format('file-share-{0}', parameters('containerAppName'))]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', parameters('storageName'), 'default', format('file-share-{0}', parameters('containerAppName')))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
-      ]
-    },
-    {
       "type": "Microsoft.App/containerApps",
       "apiVersion": "2022-10-01",
       "name": "[parameters('containerAppName')]",
       "location": "[parameters('location')]",
       "properties": {
-        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvName'))]",
+        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
         "configuration": {
           "ingress": {
             "external": true,
@@ -190,7 +201,7 @@
           "containers": [
             {
               "name": "functions-container",
-              "image": "[format('mcr.microsoft.com/azure-functions/{0}:4', parameters('functionRuntime'))]",
+              "image": "[format('mcr.microsoft.com/azure-functions/{0}:{1}', parameters('functionRuntime'), parameters('functionHostVersion'))]",
               "volumeMounts": [
                 {
                   "mountPath": "/home/site/wwwroot",
@@ -200,15 +211,15 @@
               "env": [
                 {
                   "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
-                  "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').InstrumentationKey]"
+                  "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').InstrumentationKey]"
                 },
                 {
                   "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
-                  "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+                  "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
                 },
                 {
                   "name": "AzureWebJobsStorage",
-                  "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', parameters('storageName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2022-09-01').keys[0].value)]"
+                  "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value)]"
                 }
               ]
             }
@@ -223,10 +234,10 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
-        "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvName'))]",
-        "[resourceId('Microsoft.App/managedEnvironments/storages', parameters('containerAppEnvName'), format('{0}-storage', parameters('containerAppName')))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+        "[resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments/storages', parameters('containerAppsEnvironmentName'), format('{0}-storage', parameters('containerAppName')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
       ]
     }
   ]

@@ -17,4 +17,4 @@ The above deployment button deploys the following resources
   - Log Analytics:
     Log store for the Container App and Azure Functions host process in the container.
 
-![resourceGroupName](https://user-images.githubusercontent.com/4566555/220277151-3d122b8c-c265-4ab0-8a3e-986fbbc1f1f0.png)
+![image](https://user-images.githubusercontent.com/4566555/221070319-1367b173-4861-4306-8df9-d149b90d6b6d.png)
